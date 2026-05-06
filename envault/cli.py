@@ -1,51 +1,51 @@
-"""Command-line interface for envault."""
+"""Main CLI entry point for envault."""
 
-import sys
+from __future__ import annotations
+
 import click
 
-from envault.vault import Vault
-from envault.crypto import GPGError, list_secret_keys
+from .vault import Vault
+from .crypto import encrypt, decrypt, list_secret_keys, GPGError
+from .cli_share import share_group
+from .cli_rotate import rotate_group
+from .cli_diff import diff_group
+from .cli_search import search_group
+from .cli_history import history_group
+from .cli_status import status_group
+from .cli_lint import lint_group
+from .cli_template import template_group
 
 
 @click.group()
-@click.option(
-    "--vault-dir",
-    default=".",
-    show_default=True,
-    help="Directory containing the .envault metadata.",
-)
-@click.pass_context
-def cli(ctx: click.Context, vault_dir: str) -> None:
-    """envault — manage and encrypt per-project .env files."""
-    ctx.ensure_object(dict)
-    ctx.obj["vault_dir"] = vault_dir
+def cli() -> None:
+    """envault — encrypted .env manager with GPG team sharing."""
 
 
-@cli.command("add-recipient")
+@cli.command()
 @click.argument("fingerprint")
-@click.pass_context
-def add_recipient(ctx: click.Context, fingerprint: str) -> None:
-    """Add a GPG FINGERPRINT to the recipient list."""
-    vault = Vault(ctx.obj["vault_dir"])
+@click.argument("vault_dir", default=".", type=click.Path(file_okay=False))
+def add_recipient(fingerprint: str, vault_dir: str) -> None:
+    """Add a GPG recipient to the vault."""
+    vault = Vault(vault_dir)
     vault.add_recipient(fingerprint)
-    click.echo(f"Recipient {fingerprint} added.")
+    click.echo(f"Added recipient {fingerprint}")
 
 
-@cli.command("remove-recipient")
+@cli.command()
 @click.argument("fingerprint")
-@click.pass_context
-def remove_recipient(ctx: click.Context, fingerprint: str) -> None:
-    """Remove a GPG FINGERPRINT from the recipient list."""
-    vault = Vault(ctx.obj["vault_dir"])
+@click.argument("vault_dir", default=".", type=click.Path(file_okay=False))
+def remove_recipient(fingerprint: str, vault_dir: str) -> None:
+    """Remove a GPG recipient from the vault."""
+    vault = Vault(vault_dir)
     vault.remove_recipient(fingerprint)
-    click.echo(f"Recipient {fingerprint} removed.")
+    click.echo(f"Removed recipient {fingerprint}")
 
 
-@cli.command("list-recipients")
-@click.pass_context
-def list_recipients(ctx: click.Context) -> None:
-    """List all current recipients."""
-    vault = Vault(ctx.obj["vault_dir"])
+@cli.command()
+@click.argument("vault_dir", default=".", type=click.Path(file_okay=False))
+def list_recipients(vault_dir: str) -> None:
+    """List all GPG recipients for the vault."""
+    vault = Vault(vault_dir)
     recipients = vault.get_recipients()
     if not recipients:
         click.echo("No recipients configured.")
@@ -54,48 +54,31 @@ def list_recipients(ctx: click.Context) -> None:
             click.echo(fp)
 
 
-@cli.command("lock")
-@click.option("--env-file", default=".env", show_default=True, help="Path to .env file to encrypt.")
-@click.pass_context
-def lock(ctx: click.Context, env_file: str) -> None:
-    """Encrypt the .env file for all recipients."""
-    vault = Vault(ctx.obj["vault_dir"])
-    try:
-        vault.lock(env_file)
-        click.echo("Vault locked successfully.")
-    except (GPGError, ValueError) as exc:
-        click.echo(f"Error: {exc}", err=True)
-        sys.exit(1)
+@cli.command()
+@click.argument("vault_dir", default=".", type=click.Path(file_okay=False))
+@click.option("--env-file", default=".env", show_default=True)
+def lock(vault_dir: str, env_file: str) -> None:
+    """Encrypt the .env file into the vault."""
+    vault = Vault(vault_dir)
+    vault.lock(env_file=env_file)
+    click.echo("Vault locked.")
 
 
-@cli.command("unlock")
-@click.option("--env-file", default=".env", show_default=True, help="Destination path for decrypted .env.")
-@click.pass_context
-def unlock(ctx: click.Context, env_file: str) -> None:
-    """Decrypt the vault file to a .env file."""
-    vault = Vault(ctx.obj["vault_dir"])
-    try:
-        vault.unlock(env_file)
-        click.echo(f"Vault unlocked to {env_file}.")
-    except (GPGError, FileNotFoundError) as exc:
-        click.echo(f"Error: {exc}", err=True)
-        sys.exit(1)
+@cli.command()
+@click.argument("vault_dir", default=".", type=click.Path(file_okay=False))
+@click.option("--env-file", default=".env", show_default=True)
+def unlock(vault_dir: str, env_file: str) -> None:
+    """Decrypt the vault into a .env file."""
+    vault = Vault(vault_dir)
+    vault.unlock(env_file=env_file)
+    click.echo("Vault unlocked.")
 
 
-@cli.command("list-keys")
-def list_keys() -> None:
-    """List GPG secret keys available on this machine."""
-    try:
-        keys = list_secret_keys()
-        if not keys:
-            click.echo("No secret keys found.")
-        else:
-            for key in keys:
-                click.echo(key)
-    except GPGError as exc:
-        click.echo(f"Error: {exc}", err=True)
-        sys.exit(1)
-
-
-if __name__ == "__main__":
-    cli()
+cli.add_command(share_group, name="share")
+cli.add_command(rotate_group, name="rotate")
+cli.add_command(diff_group, name="diff")
+cli.add_command(search_group, name="search")
+cli.add_command(history_group, name="history")
+cli.add_command(status_group, name="status")
+cli.add_command(lint_group, name="lint")
+cli.add_command(template_group, name="template")
