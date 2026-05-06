@@ -64,6 +64,8 @@ class Vault:
             raise ValueError(
                 "No recipients configured. Add at least one GPG key with `envault add-key`."
             )
+        if not env_path.exists():
+            raise FileNotFoundError(f"Env file not found: {env_path}")
         plaintext = env_path.read_bytes()
         ciphertext = encrypt(plaintext, recipients)
         self.vault_path.write_bytes(ciphertext)
@@ -84,4 +86,3 @@ class Vault:
         ciphertext = self.vault_path.read_bytes()
         plaintext = decrypt(ciphertext, passphrase=passphrase)
         env_path.write_bytes(plaintext)
-        os.chmod(env_path, 0o600)
