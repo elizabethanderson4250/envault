@@ -79,6 +79,7 @@ def verify_vault(vault: Vault) -> VerifyResult:
 
 
 def format_verify(result: VerifyResult) -> str:
+    """Format a VerifyResult into a human-readable multi-line string."""
     lines: List[str] = []
     status = "PASS" if result.ok else "FAIL"
     lines.append(f"Vault verification: {status}")
