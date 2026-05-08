@@ -12,6 +12,14 @@ def tag_group() -> None:
     """Manage tags attached to the vault."""
 
 
+def _load_vault(vault_dir: str) -> Vault:
+    """Load a Vault from *vault_dir*, raising a ClickException on failure."""
+    try:
+        return Vault(vault_dir)
+    except Exception as exc:
+        raise click.ClickException(f"Failed to open vault at '{vault_dir}': {exc}") from exc
+
+
 @tag_group.command("add")
 @click.argument("tag")
 @click.option(
@@ -22,7 +30,7 @@ def tag_group() -> None:
 )
 def add_cmd(tag: str, vault_dir: str) -> None:
     """Attach TAG to the vault."""
-    vault = Vault(vault_dir)
+    vault = _load_vault(vault_dir)
     try:
         updated = add_tag(vault, tag)
     except TagError as exc:
@@ -40,7 +48,7 @@ def add_cmd(tag: str, vault_dir: str) -> None:
 )
 def remove_cmd(tag: str, vault_dir: str) -> None:
     """Remove TAG from the vault."""
-    vault = Vault(vault_dir)
+    vault = _load_vault(vault_dir)
     try:
         updated = remove_tag(vault, tag)
     except TagError as exc:
@@ -57,6 +65,6 @@ def remove_cmd(tag: str, vault_dir: str) -> None:
 )
 def list_cmd(vault_dir: str) -> None:
     """List all tags attached to the vault."""
-    vault = Vault(vault_dir)
+    vault = _load_vault(vault_dir)
     tags = get_tags(vault)
     click.echo(format_tags(tags))
