@@ -57,7 +57,13 @@ def export_cmd(vault_dir: str, fmt: str, output: str | None) -> None:
     record_event(vdir, "export", {"format": fmt, "output": output or "<stdout>"})
 
     if output:
-        write_export(result, Path(output))
+        output_path = Path(output)
+        if output_path.exists():
+            click.confirm(
+                f"File '{output}' already exists. Overwrite?",
+                abort=True,
+            )
+        write_export(result, output_path)
         click.echo(f"Exported to {output} [{fmt}]")
     else:
         click.echo(result, nl=False)
