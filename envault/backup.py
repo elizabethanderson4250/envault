@@ -60,6 +60,9 @@ def restore_backup(vault_dir: Path, backup_path: Path) -> None:
 
     Raises BackupError if the backup directory or vault file is missing.
     """
+    if not backup_path.exists():
+        raise BackupError(f"Backup directory not found: {backup_path}")
+
     src_vault = backup_path / _VAULT_FILE
     if not src_vault.exists():
         raise BackupError(f"Backup at {backup_path} contains no vault file")
@@ -79,3 +82,19 @@ def delete_backup(backup_path: Path) -> None:
     if not backup_path.exists():
         raise BackupError(f"Backup not found: {backup_path}")
     shutil.rmtree(backup_path)
+
+
+def prune_backups(vault_dir: Path, keep: int) -> list[Path]:
+    """Delete old backups, keeping only the *keep* most recent ones.
+
+    Returns the list of backup directories that were deleted.
+    Raises ValueError if *keep* is less than 1.
+    """
+    if keep < 1:
+        raise ValueError(f"'keep' must be at least 1, got {keep}")
+
+    backups = list_backups(vault_dir)
+    to_delete = backups[keep:]
+    for backup in to_delete:
+        shutil.rmtree(backup)
+    return to_delete
